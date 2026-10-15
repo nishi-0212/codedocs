@@ -111,12 +111,21 @@ export async function* streamCompletion(opts: StreamOptions): AsyncGenerator<str
       if ((e as Error)?.name === "AbortError") throw e;
       throw new GroqError("Could not reach Groq. Check your network connection.", 502);
     }
-    if (res.status === 429 && attempt < 3) {
+    if (res.status === 429) {
       const ra = parseFloat(res.headers.get("retry-after") ?? "");
-      const waitSec = Math.min(Number.isFinite(ra) && ra > 0 ? ra : 6 * (attempt + 1), 25);
+      const waitSec = Number.isFinite(ra) && ra > 0 ? ra : 6 * (attempt + 1);
+      // Only wait out short limits. Long waits would hit the host's request time limit
+      // and show up as an opaque 504, so fail fast with a clear message instead.
+      if (attempt < 2 && waitSec <= 12) {
+        await res.body?.cancel().catch(() => {});
+        await sleep(waitSec * 1000, opts.signal);
+        continue;
+      }
       await res.body?.cancel().catch(() => {});
-      await sleep(waitSec * 1000, opts.signal);
-      continue;
+      throw new GroqError(
+        `Groq's rate limit was reached. Wait about ${Math.ceil(waitSec)} seconds and try again, or switch to the faster model.`,
+        429,
+      );
     }
     break;
   }
