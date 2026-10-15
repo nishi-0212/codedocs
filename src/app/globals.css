@@ -1033,6 +1033,9 @@ select option {
 }
 
 /* CodeMirror host */
+.cm-host > div {
+  height: 100%;
+}
 .cm-host .cm-editor {
   height: 100%;
 }
