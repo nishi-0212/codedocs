@@ -1,105 +1,133 @@
-# CodeDocs
+# 📄 CodeDocs — Code to Technical Documentation
 
-Paste code in any language, get clear technical documentation, streamed live. Built with Next.js and Groq. No database, no accounts.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=nextdotjs)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org)
+[![Groq](https://img.shields.io/badge/LLM-Groq%20GPT--OSS-orange)](https://console.groq.com)
+[![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel)](https://codedocs-seven.vercel.app/)
 
-## Run it
+**CodeDocs** turns source code in any language into clear technical documentation: a full reference, README, API docs, inline docstrings, or an architecture overview. Output streams in live, saves to a personal library, and exports as Markdown.
+
+👉 **[Try the Live App](https://codedocs-seven.vercel.app/)**
+
+---
+
+## 🎯 Why CodeDocs
+
+Documentation is the first thing skipped and the first thing to go stale. A general chatbot gives inconsistent structure, can invent behavior the code doesn't have, and adds unrequested code reviews. CodeDocs documents only what the code does, in a fixed structure per style, with no suggestions or critique.
+
+## 🧠 How It Works
+
+```text
+Code + style + model
+        │
+        ▼
+POST /api/generate ──► validate ──► per-IP rate limit
+        │
+        ▼
+split into chunks (file / line boundaries)
+        │
+        ▼
+Groq GPT-OSS (streaming, one request per chunk)
+        │
+        ▼
+tokens piped to the browser ──► live Markdown ──► saved to Library
+```
+
+1. The browser sends the code, the chosen style and the model to the API route.
+2. The server validates size, model and style, then applies a rate limit.
+3. Large inputs are split into chunks that fit the model's token budget.
+4. Each chunk is streamed from Groq. Source is wrapped in delimiters and treated only as material to document, so instructions hidden in code are ignored.
+5. A mid-stream failure appends an error marker so the UI shows a clear message.
+
+## ✨ Features
+
+- Any language, auto-detected (Python, JavaScript, TypeScript, Java, C, C++, C#, Go, Rust, PHP, Ruby, Swift, Kotlin, SQL, shell and more)
+- Five styles: technical doc, README, API reference, inline docstrings, architecture overview
+- Live streaming with Preview and raw Markdown views
+- Multi-file input via upload or drag and drop
+- Library with search, style filters, rename, delete with undo, and Clear all
+- Full-page reader with a table of contents
+- Command palette (`Ctrl/Cmd + K`), `Ctrl/Cmd + Enter` to generate, `Esc` to stop
+- Pastel Linear-style UI with light and dark themes, responsive on mobile
+- API key stays on the server, history stays in the browser
+
+## 📁 Project Structure
+
+```text
+src/
+├── app/
+│   ├── api/generate/route.ts    the whole backend (streaming endpoint)
+│   ├── page.tsx                 landing page
+│   ├── (app)/                   /workspace, /library, /doc/[id]
+│   └── layout.tsx, globals.css  providers, design tokens, animations
+├── components/
+│   ├── providers.tsx, app-context.tsx, workspace-context.tsx
+│   ├── AppShell.tsx, Sidebar.tsx, PageHeader.tsx
+│   ├── Landing.tsx, WorkspaceView.tsx, LibraryView.tsx, DocPageView.tsx
+│   └── CodeEditor.tsx, DocView.tsx, CommandPalette.tsx, overlays.tsx
+└── lib/
+    ├── prompts.ts               prompts for each doc style
+    ├── groq.ts                  streaming client with retry on 429
+    └── chunk.ts, ratelimit.ts, models.ts, styles.ts, languages.ts, history.ts
+```
+
+## 🔧 Run Locally
 
 Requires Node.js 18.18 or newer.
 
 ```bash
+git clone https://github.com/nishi-0212/codedocs.git
+cd codedocs
 npm install
-cp .env.example .env.local     # then put your key in .env.local
+cp .env.example .env.local     # add your Groq key (https://console.groq.com/keys)
 npm run dev
 ```
 
 Open http://localhost:3000.
 
-Get a free Groq API key at https://console.groq.com/keys and set it in `.env.local`:
-
-```
-GROQ_API_KEY=gsk_...
-```
-
-## What it does
-
-- Paste code, or drop one or many files onto the editor (files are combined into one document).
-- Pick a documentation style:
-  - **Technical doc**: overview, usage, full API reference, edge cases
-  - **README**: install, quick start, usage, configuration
-  - **API reference**: every public symbol with params, returns and errors
-  - **Inline docstrings**: your code returned with idiomatic docstrings added
-  - **Architecture overview**: components, data flow, design decisions
-- Language is auto-detected (or choose one). Python, JavaScript, TypeScript, Java, C, C++, C#, Go, Rust, PHP, Ruby, Swift, Kotlin, SQL, Shell, HTML, CSS, JSON, YAML, Lua and R have syntax highlighting. Any other language still works, since the model detects it.
-- Output streams as Markdown: copy it, download it as `.md`, or switch to the raw view.
-- Pages: `/` landing, `/workspace` (editor + live docs), `/library` (search, filter, rename, delete), `/doc/[id]` (full-page reader with table of contents).
-- Every generated doc is saved to your Library. Rename it from the sidebar (double-click or pencil), the Library cards, or the title bar. Delete has Undo, and "Clear all" empties everything after a confirmation.
-- Titles come from the document's own heading unless you name it yourself.
-- Docs describe the code only. There is no "suggested improvements" section.
-- History is stored in your browser (localStorage). Nothing is stored on the server.
-- `Ctrl/Cmd + Enter` generates, `Ctrl/Cmd + K` opens the command palette, `Esc` stops a running generation. Drag the divider to resize the panes. Dark and light themes.
-
-## How the backend works
-
-There is one endpoint: `POST /api/generate` in `src/app/api/generate/route.ts`.
-
-1. Validates the request (size limit, known model and style) and applies a per-IP rate limit.
-2. Splits large inputs into chunks at file or line boundaries.
-3. Calls Groq's streaming chat API once per chunk and pipes the tokens straight to the browser.
-4. If something fails mid-stream, a marker is appended so the UI can show a clear error.
-
-Source code is passed to the model inside delimiters and treated strictly as material to document, so instructions hidden in the code are ignored.
-
-## Configuration
-
-All optional, set in `.env.local` or in your host's environment settings:
+## ⚙️ Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `GROQ_API_KEY` | none (required) | Your Groq key. Server side only, never sent to the browser. |
+| `GROQ_API_KEY` | required | Groq key. Server side only, never `NEXT_PUBLIC_` |
 | `MAX_INPUT_CHARS` | `100000` | Largest input accepted per request |
-| `CHUNK_CHARS` | `10000` | Characters per chunk. Raise it on a paid Groq plan. |
+| `CHUNK_CHARS` | `10000` | Characters per chunk (raise on a paid plan) |
 | `MAX_OUTPUT_TOKENS` | `4000` | Max tokens written per chunk |
 | `RATE_LIMIT_PER_MIN` | `12` | Requests per minute per IP |
 | `GROQ_BASE_URL` | Groq's URL | Point at a compatible proxy |
 
-The defaults suit Groq's free tier (8K tokens per minute). Big inputs are split into chunks and may pause briefly between them while Groq's limit resets. On a paid plan, raise `CHUNK_CHARS` and `MAX_OUTPUT_TOKENS`.
+Models (GPT-OSS 120B and 20B) live in `src/lib/models.ts`. Groq retires models regularly, so update that file if one disappears.
 
-### Changing models
+## 🚀 Deploy
 
-The models in the dropdown (GPT-OSS 120B and 20B) live in `src/lib/models.ts`. Groq retires models regularly: `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` were shut down on 2026-08-16. If you see "Model ... is not available", check https://console.groq.com/docs/deprecations and edit that one file.
+Push to GitHub, import the repo in Vercel, add `GROQ_API_KEY` as an environment variable, and deploy. Anywhere else: `npm run build && npm start`.
 
-## Deploy
+## 📦 Tech Stack
 
-**Vercel** (simplest): push to GitHub, import the repo, add `GROQ_API_KEY` as an environment variable, and deploy.
+| Layer | Tools |
+| --- | --- |
+| Framework | Next.js 14 (app router), React 18, TypeScript |
+| Styling | Tailwind CSS, CSS variables for theming |
+| Editor and rendering | CodeMirror, react-markdown, remark-gfm, rehype-highlight |
+| LLM | Groq API, GPT-OSS 120B / 20B (streaming) |
+| Hosting | Vercel |
 
-**Anywhere else**: `npm run build && npm start` runs it as a normal Node server. Behind a reverse proxy, make sure response buffering is off for `/api/generate` so tokens stream (the route already sends `X-Accel-Buffering: no` for nginx).
+## ⚠️ Limitations
 
-The in-memory rate limiter is per server instance. For a strict global limit on serverless platforms, swap `src/lib/ratelimit.ts` for a Redis-backed one.
+- The rate limiter is in memory, so it is per server instance (fine for a demo, not a strict global limit).
+- Vercel's free plan caps a request at 60 seconds, so very large multi-chunk inputs can time out.
+- Defaults fit Groq's free tier (8K tokens per minute), so big inputs may pause between chunks.
+- No accounts. The Library lives in one browser's localStorage.
+- Output is model-generated. Review it before publishing.
+- Your code is sent to Groq. Don't paste secrets.
 
-## Project layout
+## 🗺️ Roadmap
 
-```
-src/
-  app/
-    api/generate/route.ts   the whole backend
-    page.tsx                landing page
-    (app)/                  workspace, library and doc/[id] routes inside the sidebar shell
-    layout.tsx, globals.css root providers, design tokens and animations
-  components/
-    providers.tsx, app-context.tsx, workspace-context.tsx   shared state (survives page changes)
-    AppShell.tsx, Sidebar.tsx, PageHeader.tsx
-    Landing.tsx, WorkspaceView.tsx, LibraryView.tsx, DocPageView.tsx
-    CodeEditor.tsx          CodeMirror editor (themed to match)
-    DocView.tsx             streamed Markdown renderer
-    CommandPalette.tsx, overlays.tsx, ui.tsx, icons.tsx
-  lib/
-    prompts.ts              system and user prompts for each doc style
-    groq.ts                 streaming Groq client with retry on 429
-    chunk.ts, ratelimit.ts, models.ts, styles.ts, languages.ts ...
-```
+- Redis-backed rate limiting
+- Export to `.docx` and PDF
+- Import a whole repo by URL
+- Accounts and a synced Library
 
-## Notes
+## About
 
-- The API key is read only on the server. Never prefix it with `NEXT_PUBLIC_`.
-- Generated documentation comes from a language model. It is grounded in your code, but review it before publishing.
-- Your code is sent to Groq for processing. Don't paste secrets or code you aren't allowed to share.
+CodeDocs: paste code in any language, get clear technical documentation in seconds.
