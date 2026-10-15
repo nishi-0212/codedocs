@@ -15,7 +15,7 @@ import { Icon } from "./icons";
 
 const CodeEditor = dynamic(() => import("./CodeEditor"), {
   ssr: false,
-  loading: () => <div className="h-full w-full" />,
+  loading: () => <div className="absolute inset-0" />,
 });
 
 const SOFT_LIMIT = 100_000;
@@ -234,7 +234,7 @@ export default function WorkspaceView() {
             </div>
           </div>
 
-          <div className="relative min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
             <CodeEditor value={ws.code} onChange={ws.setCode} language={ws.effectiveLang} onSubmit={() => void ws.generate()} />
             {fileDrag && (
               <div

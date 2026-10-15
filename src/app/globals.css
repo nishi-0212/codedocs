@@ -767,6 +767,7 @@ select option {
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 @media (min-width: 768px) {
   .pane-left {

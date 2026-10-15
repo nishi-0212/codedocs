@@ -77,7 +77,7 @@ export default function CodeEditor({
   }, [language]);
 
   return (
-    <div className="cm-host h-full w-full">
+    <div className="cm-host absolute inset-0">
       <CodeMirror
         value={value}
         onChange={onChange}
